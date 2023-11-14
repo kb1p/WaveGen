@@ -43,15 +43,12 @@ public:
     qint64 readData(char* data, qint64 maxlen) override;
 
 private:
-    static constexpr int DURATION_US = 2000000;
+    // Hint about optimal buffer size for the audio playback device, in microseconds
+    static constexpr int BUFFER_DUR_US = 1000000;
 
     const QAudioFormat m_format;
     const double k_sampleInterval;
 
-    // ring buffer
-    QByteArray m_buffer;
-    qint64 m_pos = 0,
-           m_size = 0;
     QRandomGenerator m_ranGen = QRandomGenerator::securelySeeded();
     double m_time = 0;
 
@@ -59,7 +56,7 @@ private:
     PyObject *m_pyGenFunc = nullptr,
              *m_pyArgs = nullptr;
 
-    void fillBuffer();
+    void fillBuffer(qint64 length, char *pData);
     double generateSample() noexcept;
 };
 

@@ -7,31 +7,17 @@
 void NoiseGenerator::start()
 {
     m_time = 0;
-    fillBuffer();
     open(QIODevice::ReadOnly);
 }
 
 void NoiseGenerator::stop()
 {
     close();
-    m_pos = m_size = 0;
 }
 
-void NoiseGenerator::fillBuffer()
+void NoiseGenerator::fillBuffer(qint64 length, char *pData)
 {
     const int channelBytes = m_format.sampleSize() / 8;
-    const int sampleBytes = m_format.channelCount() * channelBytes;
-    Q_UNUSED(sampleBytes) // suppress warning in release builds
-
-    if (m_buffer.isEmpty())
-    {
-        const auto newCap = (m_format.sampleRate() * m_format.channelCount() * (m_format.sampleSize() / 8)) * DURATION_US / 1000000;
-        Q_ASSERT(newCap % sampleBytes == 0);
-        m_buffer.resize(newCap);
-    }
-
-    const auto cap = m_buffer.size();
-    qint64 length = cap - m_size;
     while (length)
     {
         // Produces value in range [-1, 1]
@@ -39,16 +25,15 @@ void NoiseGenerator::fillBuffer()
         m_time += k_sampleInterval;
 
         // Put sample to buffer
-        auto ptr = reinterpret_cast<quint8*>(m_buffer.data() + (m_pos + m_size) % cap);
         for (int i = 0; i < m_format.channelCount(); i++)
         {
             switch (m_format.sampleSize())
             {
                 case 8:
                     // Only integer samples
-                    *reinterpret_cast<qint8*>(ptr) = m_format.sampleType() == QAudioFormat::SignedInt ?
-                                                     static_cast<qint8>(x * 127) :
-                                                     static_cast<quint8>((1.0 + x) / 2 * 255);
+                    *reinterpret_cast<qint8*>(pData) = m_format.sampleType() == QAudioFormat::SignedInt ?
+                                                       static_cast<qint8>(x * 127) :
+                                                       static_cast<quint8>((1.0 + x) / 2 * 255);
                     break;
                 case 16:
                     // Only integer samples
@@ -58,18 +43,18 @@ void NoiseGenerator::fillBuffer()
                         {
                             const auto value = static_cast<quint16>((1.0 + x) / 2 * 65535);
                             if (m_format.byteOrder() == QAudioFormat::LittleEndian)
-                                qToLittleEndian<quint16>(value, ptr);
+                                qToLittleEndian<quint16>(value, pData);
                             else
-                                qToBigEndian<quint16>(value, ptr);
+                                qToBigEndian<quint16>(value, pData);
                             break;
                         }
                         case QAudioFormat::SignedInt:
                         {
                             qint16 value = static_cast<qint16>(x * 32767);
                             if (m_format.byteOrder() == QAudioFormat::LittleEndian)
-                                qToLittleEndian<qint16>(value, ptr);
+                                qToLittleEndian<qint16>(value, pData);
                             else
-                                qToBigEndian<qint16>(value, ptr);
+                                qToBigEndian<qint16>(value, pData);
                             break;
                         }
                         default:
@@ -81,12 +66,10 @@ void NoiseGenerator::fillBuffer()
                     throw std::runtime_error { "not implemented" };
             }
 
-            ptr += channelBytes;
+            pData += channelBytes;
             length -= channelBytes;
-            m_size += channelBytes;
         }
     }
-    Q_ASSERT(m_size == cap);
 }
 
 qreal NoiseGenerator::generateSample() noexcept
@@ -111,23 +94,9 @@ qreal NoiseGenerator::generateSample() noexcept
 
 qint64 NoiseGenerator::readData(char *data, qint64 len)
 {
-    const auto cap = m_buffer.size();
-    len = qMin(len, m_size);
+    fillBuffer(len, data);
 
-    qint64 total = 0;
-    while (len - total > 0)
-    {
-        const qint64 chunkSize = qMin((cap - m_pos), len - total);
-        memcpy(data + total, m_buffer.constData() + m_pos, chunkSize);
-        m_pos = (m_pos + chunkSize) % cap;
-        m_size -= chunkSize;
-        total += chunkSize;
-    }
-
-    // Fill the area of the buffer that have just been sent to playback
-    fillBuffer();
-
-    return total;
+    return len;
 }
 
 qint64 NoiseGenerator::writeData(const char *data, qint64 len)
@@ -140,5 +109,9 @@ qint64 NoiseGenerator::writeData(const char *data, qint64 len)
 
 qint64 NoiseGenerator::bytesAvailable() const
 {
-    return m_size;
+    const int channelBytes = m_format.sampleSize() / 8;
+    const auto capHint = (m_format.sampleRate() * m_format.channelCount() * channelBytes) * BUFFER_DUR_US / 1000000;
+    Q_ASSERT(capHint % (m_format.channelCount() * channelBytes) == 0);
+
+    return capHint;
 }
