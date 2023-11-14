@@ -27,6 +27,7 @@ private Q_SLOTS:
     void on_btnPlay_clicked();
     void on_btnReset_clicked();
     void on_cbxDevice_activated(int idx);
+    void on_cbxScript_activated(int idx);
     void on_slVolume_valueChanged(int val);
 
 private:
@@ -35,6 +36,10 @@ private:
     QScopedPointer<Ui::WaveGen> m_ui;
     QScopedPointer<NoiseGenerator> m_gen;
     QScopedPointer<QAudioOutput> m_audioOut;
+
+    QString m_modModule;
+    PyObject *m_pyModule = nullptr,
+             *m_pyGenFunc = nullptr;
 };
 
 #endif // WAVEGEN_H

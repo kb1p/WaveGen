@@ -6,6 +6,7 @@
 
 void NoiseGenerator::start()
 {
+    m_time = 0;
     fillBuffer();
     open(QIODevice::ReadOnly);
 }
@@ -33,9 +34,10 @@ void NoiseGenerator::fillBuffer()
     qint64 length = cap - m_size;
     while (length)
     {
-        // Produces value (-1..1)
+        // Produces value in range [-1, 1]
         constexpr double magLim = 2.0 + std::numeric_limits<double>::epsilon();
-        const qreal x = m_ranGen.generateDouble() * magLim - 1.0;
+        const qreal x = generateSample() * magLim - 1.0;
+        m_time += k_sampleInterval;
 
         // Put sample to buffer
         auto ptr = reinterpret_cast<quint8*>(m_buffer.data() + (m_pos + m_size) % cap);
@@ -86,6 +88,24 @@ void NoiseGenerator::fillBuffer()
         }
     }
     Q_ASSERT(m_size == cap);
+}
+
+qreal NoiseGenerator::generateSample()
+{
+    double s = m_ranGen.generateDouble();
+    if (m_pyArgs)
+    {
+        PyTuple_SetItem(m_pyArgs, 0, PyFloat_FromDouble(m_time));
+        PyTuple_SetItem(m_pyArgs, 1, PyFloat_FromDouble(s));
+        auto rv = PyObject_CallObject(m_pyGenFunc, m_pyArgs);
+        if (rv)
+        {
+            s = PyFloat_AsDouble(rv);
+            Py_DECREF(rv);
+        }
+    }
+
+    return s;
 }
 
 qint64 NoiseGenerator::readData(char *data, qint64 len)

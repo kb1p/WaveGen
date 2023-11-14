@@ -1,15 +1,29 @@
-#include <Python.h>
-
 #include "wavegen.h"
 #include "ui_wavegen.h"
 
 #include <QMessageBox>
+#include <QDir>
 
 WaveGen::WaveGen(QWidget *parent) :
     QMainWindow(parent),
     m_ui(new Ui::WaveGen)
 {
     m_ui->setupUi(this);
+
+    // Enumerate available modules
+    QDir dir;
+    if (dir.cd("modulators"))
+    {
+        const auto lst = dir.entryInfoList({ "*.py" }, QDir::Files);
+        for (const auto &sf: lst)
+        {
+            m_ui->cbxScript->addItem(sf.baseName());
+        }
+        m_modModule = m_ui->cbxScript->currentText();
+    }
+
+    Py_Initialize();
+    PySys_SetPath(L"modulators");
 
     // Enumerate available audio devices and fill combo box
     const auto &defaultDeviceInfo = QAudioDeviceInfo::defaultOutputDevice();
@@ -23,7 +37,16 @@ WaveGen::WaveGen(QWidget *parent) :
     initializeAudio(QAudioDeviceInfo::defaultOutputDevice());
 }
 
-WaveGen::~WaveGen() = default;
+WaveGen::~WaveGen()
+{
+    m_audioOut->stop();
+    m_gen->stop();
+    m_gen.reset();
+
+    Py_XDECREF(m_pyGenFunc);
+    Py_XDECREF(m_pyModule);
+    Py_Finalize();
+}
 
 void WaveGen::on_btnBrowseScript_clicked()
 {
@@ -49,6 +72,12 @@ void WaveGen::on_cbxDevice_activated(int idx)
     m_gen->stop();
     m_audioOut->stop();
     initializeAudio(inf);
+}
+
+void WaveGen::on_cbxScript_activated(int idx)
+{
+    m_modModule = m_ui->cbxScript->currentText();
+    on_cbxDevice_activated(m_ui->cbxDevice->currentIndex());
 }
 
 void WaveGen::on_slVolume_valueChanged(int val)
@@ -81,7 +110,25 @@ void WaveGen::initializeAudio(const QAudioDeviceInfo &devInf)
     const QString msg = "Sample rate: %1 Sample size: %2 Channels: %3 Codec: %4";
     statusBar()->showMessage(msg.arg(format.sampleRate()).arg(format.sampleSize()).arg(format.channelCount()).arg(format.codec()));
 
-    m_gen.reset(new NoiseGenerator(format));
+    Py_XDECREF(m_pyGenFunc);
+    Py_XDECREF(m_pyModule);
+    m_pyModule = m_pyGenFunc = nullptr;
+    if (!m_modModule.isEmpty())
+    {
+        auto pName = PyUnicode_DecodeFSDefault(m_modModule.toLocal8Bit().data());
+        m_pyModule = PyImport_Import(pName);
+        Py_DECREF(pName);
+        if (m_pyModule)
+        {
+            m_pyGenFunc = PyObject_GetAttrString(m_pyModule, "modulate");
+            if (!m_pyGenFunc)
+                QMessageBox::warning(this, "Script error", "Failed to load function");
+        }
+        else
+            QMessageBox::warning(this, "Script error", "Failed to load module");
+    }
+
+    m_gen.reset(new NoiseGenerator(format, m_pyGenFunc));
     m_audioOut.reset(new QAudioOutput(devInf, format));
     m_gen->start();
 

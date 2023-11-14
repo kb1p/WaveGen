@@ -29,4 +29,5 @@ add_executable(wavegen ${wavegen_SRC})
 target_link_libraries(wavegen Qt5::Widgets Qt5::Multimedia ${Python_LIBRARIES})
 
 # Install the executable
-install(TARGETS wavegen DESTINATION bin)
+install(TARGETS wavegen DESTINATION "bin")
+install(DIRECTORY "modulators" DESTINATION "bin")
