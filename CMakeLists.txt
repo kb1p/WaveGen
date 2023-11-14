@@ -13,7 +13,7 @@ set(CMAKE_AUTOUIC ON)
 
 # Find the QtWidgets library
 find_package(Qt5 REQUIRED COMPONENTS Widgets Multimedia)
-find_package(Python REQUIRED COMPONENTS Development)
+find_package(Python 3.5 REQUIRED COMPONENTS Development)
 
 include_directories(${Python_INCLUDE_DIRS})
 
