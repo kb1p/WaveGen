@@ -19,7 +19,8 @@ include_directories(${Python_INCLUDE_DIRS})
 
 set(wavegen_SRC
     "src/main.cpp"
-    "src/wavegen.cpp")
+    "src/wavegen.cpp"
+    "src/noisegenerator.cpp")
 
 # Tell CMake to create the helloworld executable
 add_executable(wavegen ${wavegen_SRC})
