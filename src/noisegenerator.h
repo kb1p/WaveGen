@@ -14,7 +14,7 @@
  *
  * @todo: implement modulation.
  */
-class NoiseGenerator: public QIODevice
+class NoiseGenerator final: public QIODevice
 {
 public:
     NoiseGenerator(const QAudioFormat &format, PyObject *pyGenFunc):

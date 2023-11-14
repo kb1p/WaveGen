@@ -93,6 +93,11 @@ void WaveGen::on_slVolume_valueChanged(int val)
     m_audioOut->setVolume(linearVolume);
 }
 
+void WaveGen::on_txtFrequency_valueChanged(double val)
+{
+    setFrequency(val);
+}
+
 void WaveGen::loadModule(const QString &name)
 {
     const bool reload = name.isEmpty() && m_pyModule != nullptr;
@@ -129,6 +134,7 @@ void WaveGen::loadModule(const QString &name)
                 m_ui->cbxFunction->addItem(name);
             }
         }
+        setFrequency(m_ui->txtFrequency->value());
         setFunction(m_ui->cbxFunction->currentText());
     }
     else
@@ -148,6 +154,28 @@ void WaveGen::setFunction(const QString& name)
     initializeAudio();
 }
 
+void WaveGen::setFrequency(double freqHz)
+{
+    if (m_pyModule)
+    {
+        bool ok = false;
+        auto pyFreq = PyFloat_FromDouble(freqHz);
+        auto pyPeriod = PyFloat_FromDouble(1.0 / freqHz);
+        if (pyFreq && pyPeriod)
+        {
+            ok = PyObject_SetAttrString(m_pyModule, "freqHz", pyFreq) == 0 &&
+                 PyObject_SetAttrString(m_pyModule, "period", pyPeriod) == 0;
+        }
+        Py_XDECREF(pyPeriod);
+        Py_XDECREF(pyFreq);
+
+        if (!ok)
+            QMessageBox::warning(this, "Script error", "Failed to set modulation frequency");
+    }
+    else
+        statusBar()->showMessage("Failed to set frequency: modulator is not loaded");
+}
+
 void WaveGen::initializeAudio()
 {
     const auto devInf = m_ui->cbxDevice->currentData().value<QAudioDeviceInfo>();
@@ -160,13 +188,15 @@ void WaveGen::initializeAudio()
     format.setSampleType(QAudioFormat::SignedInt);
 
     if (!devInf.isFormatSupported(format))
-    {
-        QMessageBox::warning(this, "Notice", "Default format not supported - trying to use nearest");
         format = devInf.nearestFormat(format);
-    }
 
     const QString msg = "Sample rate: %1 Sample size: %2 Channels: %3 Codec: %4";
     statusBar()->showMessage(msg.arg(format.sampleRate()).arg(format.sampleSize()).arg(format.channelCount()).arg(format.codec()));
+
+    // Update maximum frequency limit
+    const double maxFreq = format.sampleRate() / 2.0;
+    m_ui->txtFrequency->setMaximum(maxFreq);
+    m_ui->txtFrequency->setStatusTip(QStringLiteral("Choose modulation frequency. Allowed range: 0 ~ %1").arg(maxFreq));
 
     if (m_gen)
         m_gen->stop();

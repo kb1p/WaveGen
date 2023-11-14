@@ -3,7 +3,7 @@ import math
 # Set frequency here
 freqHz = 220
 
-p = 1.0 / freqHz
+period = 1.0 / freqHz
 
 def solidNoise(t, n):
     return n
@@ -21,13 +21,13 @@ def noiseSine(t, n):
     return n * sine(t, 0)
 
 def sawtooth(t, n):
-    return math.fmod(t, p) / p
+    return math.fmod(t, period) / period
 
 def noiseSawtooth(t, n):
     return n * sawtooth(t, 0)
 
 def triangle(t, n):
-    return 2.0 / p * abs(math.fmod(t + p / 2.0, p) - p / 2.0)
+    return 2.0 / period * abs(math.fmod(t + period / 2.0, period) - period / 2.0)
 
 def noiseTriangle(t, n):
     return n * triangle(t, 0)
