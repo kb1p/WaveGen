@@ -3,6 +3,7 @@
 #include <QtMath>
 #include <QtEndian>
 #include <limits>
+#include <type_traits>
 
 void NoiseGenerator::start()
 {
@@ -15,9 +16,31 @@ void NoiseGenerator::stop()
     close();
 }
 
+template <typename T>
+typename std::enable_if<std::is_signed<T>::value, T>::type convertSample(qreal x) noexcept
+{
+    return static_cast<T>(x * std::numeric_limits<T>::max());
+}
+
+template <typename T>
+typename std::enable_if<std::is_unsigned<T>::value, T>::type convertSample(qreal x) noexcept
+{
+    return static_cast<T>((1.0 + x) / 2.0 * std::numeric_limits<T>::max());
+}
+
+template <typename T>
+void convertSample(void *pOut, const qreal x, const QAudioFormat::Endian e) noexcept
+{
+    if (e == QAudioFormat::LittleEndian)
+        qToLittleEndian<T>(convertSample<T>(x), pOut);
+    else
+        qToBigEndian<T>(convertSample<T>(x), pOut);
+}
+
 void NoiseGenerator::fillBuffer(qint64 length, char *pData)
 {
     const int channelBytes = m_format.sampleSize() / 8;
+    const auto byteOrder = m_format.byteOrder();
     while (length)
     {
         // Produces value in range [-1, 1]
@@ -32,38 +55,45 @@ void NoiseGenerator::fillBuffer(qint64 length, char *pData)
                 case 8:
                     // Only integer samples
                     *reinterpret_cast<qint8*>(pData) = m_format.sampleType() == QAudioFormat::SignedInt ?
-                                                       static_cast<qint8>(x * 127) :
-                                                       static_cast<quint8>((1.0 + x) / 2 * 255);
+                                                       convertSample<qint8>(x) :
+                                                       convertSample<quint8>(x);
                     break;
                 case 16:
                     // Only integer samples
                     switch (m_format.sampleType())
                     {
                         case QAudioFormat::UnSignedInt:
-                        {
-                            const auto value = static_cast<quint16>((1.0 + x) / 2 * 65535);
-                            if (m_format.byteOrder() == QAudioFormat::LittleEndian)
-                                qToLittleEndian<quint16>(value, pData);
-                            else
-                                qToBigEndian<quint16>(value, pData);
+                            convertSample<quint16>(pData, x, byteOrder);
                             break;
-                        }
                         case QAudioFormat::SignedInt:
-                        {
-                            qint16 value = static_cast<qint16>(x * 32767);
-                            if (m_format.byteOrder() == QAudioFormat::LittleEndian)
-                                qToLittleEndian<qint16>(value, pData);
-                            else
-                                qToBigEndian<qint16>(value, pData);
+                            convertSample<qint16>(pData, x, byteOrder);
                             break;
-                        }
                         default:
                             Q_ASSERT(false);
                     }
                     break;
                 case 32:
                     // Ints & Floats
-                    throw std::runtime_error { "not implemented" };
+                    switch (m_format.sampleType())
+                    {
+                        case QAudioFormat::UnSignedInt:
+                            convertSample<quint32>(pData, x, byteOrder);
+                            break;
+                        case QAudioFormat::SignedInt:
+                            convertSample<qint32>(pData, x, byteOrder);
+                            break;
+                        case QAudioFormat::Float:
+                            if (byteOrder == QAudioFormat::LittleEndian)
+                                qToLittleEndian<float>(x, pData);
+                            else
+                                qToBigEndian<float>(x, pData);
+                            break;
+                        default:
+                            Q_ASSERT(false);
+                    }
+                    break;
+                default:
+                    throw std::runtime_error { "24-bit formats support not implemented" };
             }
 
             pData += channelBytes;
@@ -94,7 +124,15 @@ qreal NoiseGenerator::generateSample() noexcept
 
 qint64 NoiseGenerator::readData(char *data, qint64 len)
 {
-    fillBuffer(len, data);
+    try
+    {
+        fillBuffer(len, data);
+    }
+    catch (const std::exception &ex)
+    {
+        setErrorString(ex.what());
+        len = -1;
+    }
 
     return len;
 }

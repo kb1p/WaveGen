@@ -41,6 +41,10 @@ public:
     qint64 bytesAvailable() const override;
     qint64 writeData(const char* data, qint64 len) override;
     qint64 readData(char* data, qint64 maxlen) override;
+    bool isSequential() const override
+    {
+        return true;
+    }
 
 private:
     // Hint about optimal buffer size for the audio playback device, in microseconds

@@ -23,6 +23,7 @@ public:
     ~WaveGen() override;
 
 private Q_SLOTS:
+    void onAudioDevStateChanged(QAudio::State newState);
     void on_btnPlay_clicked();
     void on_btnReset_clicked();
     void on_btnRefresh_clicked();

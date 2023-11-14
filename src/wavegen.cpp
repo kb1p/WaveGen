@@ -39,21 +39,39 @@ WaveGen::WaveGen(QWidget *parent) :
 
 WaveGen::~WaveGen()
 {
-    m_audioOut->stop();
-    m_gen->stop();
-    m_gen.reset();
+    if (m_audioOut)
+        m_audioOut->stop();
+    if (m_gen)
+    {
+        m_gen->stop();
+        m_gen.reset();
+    }
 
     Py_XDECREF(m_pyGenFunc);
     Py_XDECREF(m_pyModule);
     Py_Finalize();
 }
 
+void WaveGen::onAudioDevStateChanged(QAudio::State newState)
+{
+    if (newState == QAudio::StoppedState && m_audioOut->error() != QAudio::NoError)
+    {
+        QMessageBox::critical(this,
+                              QStringLiteral("Fatal error"),
+                              m_gen ? QStringLiteral("Waveform generation aborted: %1").arg(m_gen->errorString()) :
+                                      QStringLiteral("Waveform generation aborted, unknown error"));
+    }
+}
+
 void WaveGen::on_btnPlay_clicked()
 {
-    if (m_ui->btnPlay->isChecked())
-        m_audioOut->start(m_gen.data());
-    else
-        m_audioOut->stop();
+    if (m_audioOut)
+    {
+        if (m_ui->btnPlay->isChecked())
+            m_audioOut->start(m_gen.data());
+        else
+            m_audioOut->stop();
+    }
 }
 
 void WaveGen::on_btnReset_clicked()
@@ -84,13 +102,16 @@ void WaveGen::on_cbxFunction_activated(int idx)
 
 void WaveGen::on_slVolume_valueChanged(int val)
 {
-    m_ui->txtVolume->setText(QString("%1 %").arg(val));
+    if (m_audioOut)
+    {
+        m_ui->txtVolume->setText(QString("%1 %").arg(val));
 
-    const auto linearVolume = QAudio::convertVolume(val / 100.0,
-                                                    QAudio::LogarithmicVolumeScale,
-                                                    QAudio::LinearVolumeScale);
+        const auto linearVolume = QAudio::convertVolume(val / 100.0,
+                                                        QAudio::LogarithmicVolumeScale,
+                                                        QAudio::LinearVolumeScale);
 
-    m_audioOut->setVolume(linearVolume);
+        m_audioOut->setVolume(linearVolume);
+    }
 }
 
 void WaveGen::on_txtFrequency_valueChanged(double val)
@@ -198,22 +219,36 @@ void WaveGen::initializeAudio()
     m_ui->txtFrequency->setMaximum(maxFreq);
     m_ui->txtFrequency->setStatusTip(QStringLiteral("Choose modulation frequency. Allowed range: 0 ~ %1").arg(maxFreq));
 
-    if (m_gen)
-        m_gen->stop();
-    if (m_audioOut)
-        m_audioOut->stop();
-    m_gen.reset(new NoiseGenerator(format, m_pyGenFunc));
-    m_audioOut.reset(new QAudioOutput(devInf, format));
-    m_gen->start();
+    try
+    {
+        if (m_gen)
+            m_gen->stop();
+        if (m_audioOut)
+        {
+            m_audioOut->stop();
+            disconnect(m_audioOut.data(), nullptr, nullptr, nullptr);
+        }
+        m_gen.reset(new NoiseGenerator(format, m_pyGenFunc));
+        m_audioOut.reset(new QAudioOutput(devInf, format));
+        connect(m_audioOut.data(), &QAudioOutput::stateChanged,
+                this, &WaveGen::onAudioDevStateChanged);
+        m_gen->start();
 
-    const auto linearVolume = QAudio::convertVolume(m_ui->slVolume->value() / 100.0,
-                                                    QAudio::LogarithmicVolumeScale,
-                                                    QAudio::LinearVolumeScale);
+        const auto linearVolume = QAudio::convertVolume(m_ui->slVolume->value() / 100.0,
+                                                        QAudio::LogarithmicVolumeScale,
+                                                        QAudio::LinearVolumeScale);
 
-    m_audioOut->setVolume(linearVolume);
+        m_audioOut->setVolume(linearVolume);
 
-    if (m_ui->btnPlay->isChecked())
-        m_audioOut->start(m_gen.data());
-    else
-        m_audioOut->stop();
+        if (m_ui->btnPlay->isChecked())
+            m_audioOut->start(m_gen.data());
+        else
+            m_audioOut->stop();
+    }
+    catch (const std::exception &err)
+    {
+        QMessageBox::critical(this,
+                              QStringLiteral("Fatal error"),
+                              QStringLiteral("Error initializing audio output: %1").arg(err.what()));
+    }
 }

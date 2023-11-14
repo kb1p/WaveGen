@@ -30,4 +30,5 @@ target_link_libraries(wavegen Qt5::Widgets Qt5::Multimedia ${Python_LIBRARIES})
 
 # Install the executable
 install(TARGETS wavegen DESTINATION "bin")
-install(DIRECTORY "modulators" DESTINATION "bin")
+install(DIRECTORY "modulators" DESTINATION "${CMAKE_INSTALL_PREFIX}")
+install(PROGRAMS "start.sh" "start.bat" DESTINATION "${CMAKE_INSTALL_PREFIX}")
