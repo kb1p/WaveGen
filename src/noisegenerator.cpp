@@ -35,8 +35,7 @@ void NoiseGenerator::fillBuffer()
     while (length)
     {
         // Produces value in range [-1, 1]
-        constexpr double magLim = 2.0 + std::numeric_limits<double>::epsilon();
-        const qreal x = generateSample() * magLim - 1.0;
+        const qreal x = generateSample() * 2.0 - 1.0;
         m_time += k_sampleInterval;
 
         // Put sample to buffer
@@ -90,9 +89,11 @@ void NoiseGenerator::fillBuffer()
     Q_ASSERT(m_size == cap);
 }
 
-qreal NoiseGenerator::generateSample()
+qreal NoiseGenerator::generateSample() noexcept
 {
-    double s = m_ranGen.generateDouble();
+    // We need randon in range including both ends, i.e. [0, 1]
+    constexpr double upperBoundX = 1.0 + std::numeric_limits<double>::epsilon();
+    double s = m_ranGen.bounded(upperBoundX);
     if (m_pyArgs)
     {
         PyTuple_SetItem(m_pyArgs, 0, PyFloat_FromDouble(m_time));

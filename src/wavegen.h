@@ -26,18 +26,21 @@ private Q_SLOTS:
     void on_btnBrowseScript_clicked();
     void on_btnPlay_clicked();
     void on_btnReset_clicked();
+    void on_btnRefresh_clicked();
     void on_cbxDevice_activated(int idx);
     void on_cbxScript_activated(int idx);
+    void on_cbxFunction_activated(int idx);
     void on_slVolume_valueChanged(int val);
 
 private:
-    void initializeAudio(const QAudioDeviceInfo &devInf);
+    void loadModule(const QString &name = { });
+    void setFunction(const QString &name);
+    void initializeAudio();
 
     QScopedPointer<Ui::WaveGen> m_ui;
     QScopedPointer<NoiseGenerator> m_gen;
     QScopedPointer<QAudioOutput> m_audioOut;
 
-    QString m_modModule;
     PyObject *m_pyModule = nullptr,
              *m_pyGenFunc = nullptr;
 };

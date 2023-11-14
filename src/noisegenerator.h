@@ -60,7 +60,7 @@ private:
              *m_pyArgs = nullptr;
 
     void fillBuffer();
-    double generateSample();
+    double generateSample() noexcept;
 };
 
 #endif // NOISEGENERATOR_H
