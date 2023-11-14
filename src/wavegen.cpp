@@ -48,11 +48,6 @@ WaveGen::~WaveGen()
     Py_Finalize();
 }
 
-void WaveGen::on_btnBrowseScript_clicked()
-{
-    QMessageBox::information(this, "Debug", "Browse");
-}
-
 void WaveGen::on_btnPlay_clicked()
 {
     if (m_ui->btnPlay->isChecked())

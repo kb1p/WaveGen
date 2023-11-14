@@ -23,7 +23,6 @@ public:
     ~WaveGen() override;
 
 private Q_SLOTS:
-    void on_btnBrowseScript_clicked();
     void on_btnPlay_clicked();
     void on_btnReset_clicked();
     void on_btnRefresh_clicked();
