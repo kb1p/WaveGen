@@ -21,6 +21,7 @@ WaveGen::WaveGen(QWidget *parent) :
         if (deviceInfo != defaultDeviceInfo)
             m_ui->cbxDevice->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
+    scanSupportedFormats();
 
     // Enumerate available modules
     QDir dir;
@@ -87,6 +88,7 @@ void WaveGen::on_btnRefresh_clicked()
 
 void WaveGen::on_cbxDevice_activated(int idx)
 {
+    scanSupportedFormats();
     initializeAudio();
 }
 
@@ -98,6 +100,11 @@ void WaveGen::on_cbxScript_activated(int idx)
 void WaveGen::on_cbxFunction_activated(int idx)
 {
     setFunction(m_ui->cbxFunction->currentText());
+}
+
+void WaveGen::on_cbxFormat_activated(int idx)
+{
+    initializeAudio();
 }
 
 void WaveGen::on_slVolume_valueChanged(int val)
@@ -197,19 +204,90 @@ void WaveGen::setFrequency(double freqHz)
         statusBar()->showMessage("Failed to set frequency: modulator is not loaded");
 }
 
+QString format2str(const QAudioFormat &fmt) noexcept
+{
+    QString t;
+    switch (fmt.sampleType())
+    {
+        case QAudioFormat::Float:
+            t = QStringLiteral("real");
+            break;
+        case QAudioFormat::SignedInt:
+            t = QStringLiteral("signed");
+            break;
+        case QAudioFormat::UnSignedInt:
+            t = QStringLiteral("unsigned");
+            break;
+        default:
+            t = QStringLiteral("unknown");
+    }
+
+    return QStringLiteral("%1Hz %2bit %3").arg(fmt.sampleRate()).arg(fmt.sampleSize()).arg(t);
+}
+
+void WaveGen::scanSupportedFormats()
+{
+    m_ui->cbxFormat->clear();
+    if (m_ui->cbxDevice->currentIndex() < 0)
+        return;
+
+    const auto devInf = m_ui->cbxDevice->currentData().value<QAudioDeviceInfo>();
+    const auto freqencies = devInf.supportedSampleRates();
+    const auto sizes = devInf.supportedSampleSizes();
+    const auto types = devInf.supportedSampleTypes();
+    const auto byteOrders = devInf.supportedByteOrders();
+
+    // We limit channel count to 1 (mono) and codec to linear PCM
+    QAudioFormat defFmt = devInf.preferredFormat(),
+                 curFmt;
+    defFmt.setChannelCount(1);
+    curFmt.setChannelCount(1);
+    curFmt.setByteOrder(QAudioFormat::LittleEndian);
+    curFmt.setCodec(QStringLiteral("audio/pcm"));
+    int index = 0;
+    for (auto f: freqencies)
+    {
+        curFmt.setSampleRate(f);
+        for (auto s: sizes)
+        {
+            if (s != 8 && s != 16 && s != 32)
+                continue;
+
+            curFmt.setSampleSize(s);
+            for (auto t: types)
+            {
+                curFmt.setSampleType(t);
+                if (devInf.isFormatSupported(curFmt))
+                {
+                    m_ui->cbxFormat->addItem(format2str(curFmt), QVariant::fromValue(curFmt));
+                    if (curFmt == defFmt)
+                        m_ui->cbxFormat->setCurrentIndex(index);
+                    index++;
+                }
+            }
+        }
+    }
+}
+
 void WaveGen::initializeAudio()
 {
-    const auto devInf = m_ui->cbxDevice->currentData().value<QAudioDeviceInfo>();
-    QAudioFormat format;
-    format.setSampleRate(44100);
-    format.setChannelCount(1);
-    format.setSampleSize(16);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
+    if (m_ui->cbxDevice->currentIndex() < 0)
+    {
+        QMessageBox::critical(this,
+                              QStringLiteral("Fatal error"),
+                              QStringLiteral("Invalid device is selected. Wave generation aborted."));
+        return;
+    }
+    if (m_ui->cbxFormat->currentIndex() < 0)
+    {
+        QMessageBox::critical(this,
+                              QStringLiteral("Fatal error"),
+                              QStringLiteral("Incorrect format is chosen. Wave generation aborted."));
+        return;
+    }
 
-    if (!devInf.isFormatSupported(format))
-        format = devInf.nearestFormat(format);
+    const auto devInf = m_ui->cbxDevice->currentData().value<QAudioDeviceInfo>();
+    const auto format = m_ui->cbxFormat->currentData().value<QAudioFormat>();
 
     const QString msg = "Sample rate: %1 Sample size: %2 Channels: %3 Codec: %4";
     statusBar()->showMessage(msg.arg(format.sampleRate()).arg(format.sampleSize()).arg(format.channelCount()).arg(format.codec()));

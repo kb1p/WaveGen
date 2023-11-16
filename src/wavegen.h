@@ -29,6 +29,7 @@ private Q_SLOTS:
     void on_btnRefresh_clicked();
     void on_cbxDevice_activated(int idx);
     void on_cbxScript_activated(int idx);
+    void on_cbxFormat_activated(int idx);
     void on_cbxFunction_activated(int idx);
     void on_slVolume_valueChanged(int val);
     void on_txtFrequency_valueChanged(double val);
@@ -37,6 +38,7 @@ private:
     void loadModule(const QString &name = { });
     void setFunction(const QString &name);
     void setFrequency(double freqHz);
+    void scanSupportedFormats();
     void initializeAudio();
 
     QScopedPointer<Ui::WaveGen> m_ui;
