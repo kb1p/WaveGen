@@ -11,7 +11,13 @@ $ cmake --build . --target install
 ```
 
 ### Running
-Simply run `start.sh` (Unix) or `start.bat` (Windows). Or run executable named `waveform[.exe]` from `bin` subdirectory, but make sure `modulators` dir is located (or linked) in the current launch directory.
+#### Linux
+1. Make sure Python 3.5+ package is installed.
+2. Run `start.sh`
+
+#### Windows
+1. Make sure Python 3.5+ interpreter's location is added to the system PATH variable **or** extract contents of the [Python embedded archive](https://www.python.org/ftp/python/3.8.10/python-3.8.10-embed-amd64.zip) into `bin` subdirectory of WaveGen installation directory.
+2. Run`start.bat`.
 
 ### Safety warning
 Take care of you hearing: don't launch signals at maximum volume, better start at lower values and increase it per demand during signal generation.
