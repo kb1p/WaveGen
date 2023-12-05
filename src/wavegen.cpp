@@ -123,7 +123,12 @@ void WaveGen::on_slVolume_valueChanged(int val)
 
 void WaveGen::on_txtFrequency_valueChanged(double val)
 {
-    setFrequency(val);
+    setModulationParams(val, m_ui->txtModDepth->value());
+}
+
+void WaveGen::on_txtModDepth_valueChanged(double val)
+{
+    setModulationParams(m_ui->txtFrequency->value(), val);
 }
 
 void WaveGen::loadModule(const QString &name)
@@ -162,7 +167,8 @@ void WaveGen::loadModule(const QString &name)
                 m_ui->cbxFunction->addItem(name);
             }
         }
-        setFrequency(m_ui->txtFrequency->value());
+        setModulationParams(m_ui->txtFrequency->value(),
+                            m_ui->txtModDepth->value());
         setFunction(m_ui->cbxFunction->currentText());
     }
     else
@@ -182,20 +188,23 @@ void WaveGen::setFunction(const QString& name)
     initializeAudio();
 }
 
-void WaveGen::setFrequency(double freqHz)
+void WaveGen::setModulationParams(double freqHz, double depth)
 {
     if (m_pyModule)
     {
         bool ok = false;
         auto pyFreq = PyFloat_FromDouble(freqHz);
         auto pyPeriod = PyFloat_FromDouble(1.0 / freqHz);
-        if (pyFreq && pyPeriod)
+        auto pyDepth = PyFloat_FromDouble(depth / 100.0);
+        if (pyFreq && pyPeriod && pyDepth)
         {
-            ok = PyObject_SetAttrString(m_pyModule, "freqHz", pyFreq) == 0 &&
-                 PyObject_SetAttrString(m_pyModule, "period", pyPeriod) == 0;
+            ok = PyObject_SetAttrString(m_pyModule, "FREQ_HZ", pyFreq) == 0 &&
+                 PyObject_SetAttrString(m_pyModule, "PERIOD", pyPeriod) == 0 &&
+                 PyObject_SetAttrString(m_pyModule, "DEPTH", pyDepth) == 0;
         }
         Py_XDECREF(pyPeriod);
         Py_XDECREF(pyFreq);
+        Py_XDECREF(pyDepth);
 
         if (!ok)
             QMessageBox::warning(this, "Script error", "Failed to set modulation frequency");

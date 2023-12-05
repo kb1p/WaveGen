@@ -33,11 +33,12 @@ private Q_SLOTS:
     void on_cbxFunction_activated(int idx);
     void on_slVolume_valueChanged(int val);
     void on_txtFrequency_valueChanged(double val);
+    void on_txtModDepth_valueChanged(double val);
 
 private:
     void loadModule(const QString &name = { });
     void setFunction(const QString &name);
-    void setFrequency(double freqHz);
+    void setModulationParams(double freqHz, double depth);
     void scanSupportedFormats();
     void initializeAudio();
 
