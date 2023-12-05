@@ -4,6 +4,8 @@
 #include <QMessageBox>
 #include <QDir>
 
+#include <cwchar>
+
 WaveGen::WaveGen(QWidget *parent) :
     QMainWindow(parent),
     m_ui(new Ui::WaveGen)
@@ -11,7 +13,18 @@ WaveGen::WaveGen(QWidget *parent) :
     m_ui->setupUi(this);
 
     Py_Initialize();
-    PySys_SetPath(L"modulators");
+
+    // Modify path to include modulator modules directory
+    constexpr int MAX_MODULE_PATH = 4096;
+#ifdef WIN32
+    static const wchar_t *MOD_DIR_LIST_ITEM = L";modulators";
+#else
+    static const wchar_t *MOD_DIR_LIST_ITEM = L":modulators";
+#endif
+    wchar_t buff[MAX_MODULE_PATH];
+    wcsncpy(buff, Py_GetPath(), MAX_MODULE_PATH);
+    wcsncat(buff, MOD_DIR_LIST_ITEM, MAX_MODULE_PATH);
+    PySys_SetPath(buff);
 
     // Enumerate available audio devices and fill combo box
     const auto &defaultDeviceInfo = QAudioDeviceInfo::defaultOutputDevice();

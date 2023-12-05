@@ -11,6 +11,10 @@ set(CMAKE_AUTOMOC ON)
 # Instruct CMake to create code from Qt designer ui files
 set(CMAKE_AUTOUIC ON)
 
+if(WIN32)
+    add_definitions(-DWIN32)
+endif()
+
 # Find the QtWidgets library
 find_package(Qt5 REQUIRED COMPONENTS Widgets Multimedia)
 find_package(Python 3.5 REQUIRED COMPONENTS Development)
