@@ -1,4 +1,5 @@
 import math
+import random
 
 # The global variables below are set / modified from application
 # Set frequency here
@@ -8,8 +9,30 @@ PERIOD = 1.0 / FREQ_HZ
 # Modulation depth [0.0, 1.0]
 DEPTH = 1.0
 
-def solidNoise(t, n):
+def whiteNoise(t, n):
     return n
+
+memRWN = 0.5
+
+def randomWalkNoise(t, n):
+    global memRWN
+    memRWN += 0.01 if n > 0.5 else -0.01
+    if memRWN > 1.0:
+        memRWN = 2.0 - memRWN
+    elif memRWN < 0.0:
+        memRWN = -memRWN
+    return memRWN
+
+memBN = 0.5
+
+def brownianNoise(t, n):
+    global memBN
+    memBN += random.gauss(0.0, 0.01)
+    if memBN > 1.0:
+        memBN = 2.0 - memBN
+    elif memBN < 0.0:
+        memBN = -memBN
+    return memBN
 
 def meander(t, n):
     return 1.0 if math.floor(t * FREQ_HZ * 2.0) % 2 == 1 else (1.0 - DEPTH)
