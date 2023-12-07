@@ -9,8 +9,16 @@ PERIOD = 1.0 / FREQ_HZ
 # Modulation depth [0.0, 1.0]
 DEPTH = 1.0
 
-def whiteNoise(t, n):
+def uniformWhiteNoise(t, n):
     return n
+
+def gaussWhiteNoise(*a):
+    v = random.gauss(0.5, 0.5 / 3.0)
+    if v > 1.0:
+        v = 1.0
+    elif v < 0.0:
+        v = 0.0
+    return v
 
 memRWN = 0.5
 
@@ -25,7 +33,7 @@ def randomWalkNoise(t, n):
 
 memBN = 0.5
 
-def brownianNoise(t, n):
+def brownianNoise(*a):
     global memBN
     memBN += random.gauss(0.0, 0.01)
     if memBN > 1.0:
