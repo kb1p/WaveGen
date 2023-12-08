@@ -61,6 +61,8 @@ private:
              *m_pyArgs = nullptr;
 
     void fillBuffer(qint64 length, char *pData);
+
+    /// @return Sample value in range [-1.0, 1.0]
     double generateSample() noexcept;
 };
 

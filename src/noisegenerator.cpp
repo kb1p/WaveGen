@@ -44,8 +44,7 @@ void NoiseGenerator::fillBuffer(qint64 length, char *pData)
     while (length)
     {
         // Produces value in range [-1, 1]
-        const qreal x = generateSample() * 2.0 - 1.0;
-        m_time += k_sampleInterval;
+        const qreal x = std::min(1.0, std::max(-1.0, generateSample()));
 
         // Put sample to buffer
         for (int i = 0; i < m_format.channelCount(); i++)
@@ -99,18 +98,20 @@ void NoiseGenerator::fillBuffer(qint64 length, char *pData)
             pData += channelBytes;
             length -= channelBytes;
         }
+
+        m_time += k_sampleInterval;
     }
 }
 
 qreal NoiseGenerator::generateSample() noexcept
 {
-    // We need randon in range including both ends, i.e. [0, 1]
-    constexpr double upperBoundX = 1.0 + std::numeric_limits<double>::epsilon();
-    double s = m_ranGen.bounded(upperBoundX);
+    auto s = 0.0;
     if (m_pyArgs)
     {
+        // We need random in range including both ends, i.e. [-1, 1]
+        constexpr double upperBoundX = 1.0 + std::numeric_limits<double>::epsilon();
         PyTuple_SetItem(m_pyArgs, 0, PyFloat_FromDouble(m_time));
-        PyTuple_SetItem(m_pyArgs, 1, PyFloat_FromDouble(s));
+        PyTuple_SetItem(m_pyArgs, 1, PyFloat_FromDouble(m_ranGen.bounded(upperBoundX) * 2.0 - 1.0));
         auto rv = PyObject_CallObject(m_pyGenFunc, m_pyArgs);
         if (rv)
         {
@@ -118,6 +119,7 @@ qreal NoiseGenerator::generateSample() noexcept
             Py_DECREF(rv);
         }
     }
+    Q_ASSERT(s >= -1.0 && s <= 1.0);
 
     return s;
 }
