@@ -177,7 +177,10 @@ void WaveGen::loadModule(const QString &name)
             if (PyCallable_Check(value))
             {
                 auto name = PyUnicode_AsUTF8(key);
-                m_ui->cbxFunction->addItem(name);
+
+                // Internal functions (starting with underscore) will not be listed
+                if (name && name[0] != '_')
+                    m_ui->cbxFunction->addItem(name);
             }
         }
         setModulationParams(m_ui->txtFrequency->value(),
