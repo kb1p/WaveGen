@@ -26,7 +26,7 @@ public:
             throw std::runtime_error { "incorrect format" };
 
         if (m_pyGenFunc && PyCallable_Check(m_pyGenFunc))
-            m_pyArgs = PyTuple_New(2);
+            m_pyArgs = PyTuple_New(3);
     }
 
     ~NoiseGenerator()
@@ -54,7 +54,8 @@ private:
     const double k_sampleInterval;
 
     QRandomGenerator m_ranGen = QRandomGenerator::securelySeeded();
-    double m_time = 0;
+    double m_time = 0,
+           m_prev = 0;
 
     // Script stuff
     PyObject *m_pyGenFunc = nullptr,

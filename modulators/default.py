@@ -14,10 +14,10 @@ def _modulate(bs, ms):
     mw = (ms + 1.0) / 2.0
     return bs * (mw * DEPTH - DEPTH + 1.0 if bs >= 0.0 else 1.0 - mw * DEPTH)
 
-def uniformWhiteNoise(t, n):
+def uniformWhiteNoise(t, n, m):
     return n
 
-def gaussWhiteNoise(*a):
+def gaussWhiteNoise(*_):
     v = random.gauss(0.0, 1.0 / 3.0)
     if v > 1.0:
         v = 1.0
@@ -25,48 +25,42 @@ def gaussWhiteNoise(*a):
         v = -1.0
     return v
 
-memRWN = 0.0
+def randomWalkNoise(t, n, m):
+    v = m + (0.01 if n > 0.0 else -0.01)
+    if v > 1.0:
+        v = 2.0 - v
+    elif v < -1.0:
+        v = -2.0 - v
+    return v
 
-def randomWalkNoise(t, n):
-    global memRWN
-    memRWN += 0.01 if n > 0.0 else -0.01
-    if memRWN > 1.0:
-        memRWN = 2.0 - memRWN
-    elif memRWN < -1.0:
-        memRWN = -2.0 - memRWN
-    return memRWN
+def brownianNoise(t, n, m):
+    v = m + random.gauss(0.0, 0.01)
+    if v > 1.0:
+        v = 2.0 - v
+    elif v < -1.0:
+        v = -2.0 - v
+    return v
 
-memBN = 0.0
-
-def brownianNoise(*a):
-    global memBN
-    memBN += random.gauss(0.0, 0.01)
-    if memBN > 1.0:
-        memBN = 2.0 - memBN
-    elif memBN < -1.0:
-        memBN = -2.0 - memBN
-    return memBN
-
-def meander(t, n):
+def meander(t, *_):
     return 1.0 if math.floor(t * FREQ_HZ * 2.0) % 2 == 1 else -1.0
 
-def noiseMeander(t, n):
+def noiseMeander(t, n, _):
     return _modulate(n, meander(t, 0))
 
-def sine(t, n):
+def sine(t, *_):
     return math.sin(t * FREQ_HZ * math.pi * 2.0)
 
-def noiseSine(t, n):
+def noiseSine(t, n, _):
     return _modulate(n, sine(t, 0))
 
-def sawtooth(t, n):
+def sawtooth(t, *_):
     return math.fmod(t, PERIOD) / PERIOD * 2.0 - 1.0
 
-def noiseSawtooth(t, n):
+def noiseSawtooth(t, n, _):
     return _modulate(n, sawtooth(t, 0))
 
-def triangle(t, n):
+def triangle(t, *_):
     return 2.0 / PERIOD * abs(math.fmod(t + PERIOD / 2.0, PERIOD) - PERIOD / 2.0) * 2.0 - 1.0
 
-def noiseTriangle(t, n):
+def noiseTriangle(t, n, _):
     return _modulate(n, triangle(t, 0))

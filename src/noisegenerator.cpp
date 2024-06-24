@@ -8,6 +8,7 @@
 void NoiseGenerator::start()
 {
     m_time = 0;
+    m_prev = 0;
     open(QIODevice::ReadOnly);
 }
 
@@ -112,10 +113,11 @@ qreal NoiseGenerator::generateSample() noexcept
         constexpr double upperBoundX = 1.0 + std::numeric_limits<double>::epsilon();
         PyTuple_SetItem(m_pyArgs, 0, PyFloat_FromDouble(m_time));
         PyTuple_SetItem(m_pyArgs, 1, PyFloat_FromDouble(m_ranGen.bounded(upperBoundX) * 2.0 - 1.0));
+        PyTuple_SetItem(m_pyArgs, 2, PyFloat_FromDouble(m_prev));
         auto rv = PyObject_CallObject(m_pyGenFunc, m_pyArgs);
         if (rv)
         {
-            s = PyFloat_AsDouble(rv);
+            m_prev = s = PyFloat_AsDouble(rv);
             Py_DECREF(rv);
         }
     }
