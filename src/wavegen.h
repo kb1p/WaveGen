@@ -22,6 +22,11 @@ public:
     explicit WaveGen(QWidget *parent = nullptr);
     ~WaveGen() override;
 
+    double modulationDepth() const noexcept
+    {
+        return m_modDepth;
+    }
+
 private Q_SLOTS:
     void onAudioDevStateChanged(QAudio::State newState);
     void on_btnPlay_clicked();
@@ -47,7 +52,11 @@ private:
     QScopedPointer<QAudioOutput> m_audioOut;
 
     PyObject *m_pyModule = nullptr,
-             *m_pyGenFunc = nullptr;
+             *m_pyIntModule = nullptr,
+             *m_pyGenFunc = nullptr,
+             *m_pyGenPtr = nullptr;
+
+    double m_modDepth = 1.0;
 };
 
 #endif // WAVEGEN_H

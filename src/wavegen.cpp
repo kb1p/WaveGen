@@ -1,5 +1,6 @@
 #include "wavegen.h"
 #include "ui_wavegen.h"
+#include "pymodule.h"
 
 #include <QMessageBox>
 #include <QDir>
@@ -11,6 +12,9 @@ WaveGen::WaveGen(QWidget *parent) :
     m_ui(new Ui::WaveGen)
 {
     m_ui->setupUi(this);
+
+    // Create python wrappers for native functions that will be injected into module
+    PyImport_AppendInittab("wavegen", PyInit_wavegen);
 
     Py_Initialize();
 
@@ -25,6 +29,8 @@ WaveGen::WaveGen(QWidget *parent) :
     wcsncpy(buff, Py_GetPath(), MAX_MODULE_PATH);
     wcsncat(buff, MOD_DIR_LIST_ITEM, MAX_MODULE_PATH);
     PySys_SetPath(buff);
+
+    m_pyGenPtr = PyCapsule_New(this, nullptr, nullptr);
 
     // Enumerate available audio devices and fill combo box
     const auto &defaultDeviceInfo = QAudioDeviceInfo::defaultOutputDevice();
@@ -63,6 +69,7 @@ WaveGen::~WaveGen()
 
     Py_XDECREF(m_pyGenFunc);
     Py_XDECREF(m_pyModule);
+    Py_XDECREF(m_pyGenPtr);
     Py_Finalize();
 }
 
@@ -168,6 +175,13 @@ void WaveGen::loadModule(const QString &name)
     // Enumerate functions
     if (m_pyModule)
     {
+        if (!m_pyIntModule)
+        {
+            m_pyIntModule = getPythonModule();
+            assert(m_pyIntModule);
+            PyObject_SetAttrString(m_pyIntModule, THIS_ATTR, m_pyGenPtr);
+        }
+
         m_ui->cbxFunction->clear();
         auto d = PyModule_GetDict(m_pyModule);
         PyObject *key, *value;
@@ -211,16 +225,15 @@ void WaveGen::setModulationParams(double freqHz, double depth)
         bool ok = false;
         auto pyFreq = PyFloat_FromDouble(freqHz);
         auto pyPeriod = PyFloat_FromDouble(1.0 / freqHz);
-        auto pyDepth = PyFloat_FromDouble(depth / 100.0);
-        if (pyFreq && pyPeriod && pyDepth)
+        if (pyFreq && pyPeriod)
         {
             ok = PyObject_SetAttrString(m_pyModule, "FREQ_HZ", pyFreq) == 0 &&
-                 PyObject_SetAttrString(m_pyModule, "PERIOD", pyPeriod) == 0 &&
-                 PyObject_SetAttrString(m_pyModule, "DEPTH", pyDepth) == 0;
+                 PyObject_SetAttrString(m_pyModule, "PERIOD", pyPeriod) == 0;
         }
         Py_XDECREF(pyPeriod);
         Py_XDECREF(pyFreq);
-        Py_XDECREF(pyDepth);
+
+        m_modDepth = depth / 100.0;
 
         if (!ok)
             QMessageBox::warning(this, "Script error", "Failed to set modulation frequency");
@@ -332,6 +345,7 @@ void WaveGen::initializeAudio()
             disconnect(m_audioOut.data(), nullptr, nullptr, nullptr);
         }
         m_gen.reset(new NoiseGenerator(format, m_pyGenFunc));
+
         m_audioOut.reset(new QAudioOutput(devInf, format));
         connect(m_audioOut.data(), &QAudioOutput::stateChanged,
                 this, &WaveGen::onAudioDevStateChanged);
