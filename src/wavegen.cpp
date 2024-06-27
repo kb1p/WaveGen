@@ -82,7 +82,10 @@ void WaveGen::on_btnPlay_clicked()
     if (m_audioOut)
     {
         if (m_ui->btnPlay->isChecked())
+        {
+            m_audioOut->setBufferSize(m_gen->optimalBufferSize());
             m_audioOut->start(m_gen.data());
+        }
         else
             m_audioOut->stop();
     }
@@ -344,7 +347,10 @@ void WaveGen::initializeAudio()
         m_audioOut->setVolume(linearVolume);
 
         if (m_ui->btnPlay->isChecked())
+        {
+            m_audioOut->setBufferSize(m_gen->optimalBufferSize());
             m_audioOut->start(m_gen.data());
+        }
         else
             m_audioOut->stop();
     }

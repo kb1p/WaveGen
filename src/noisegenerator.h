@@ -38,6 +38,8 @@ public:
     void start();
     void stop();
 
+    int optimalBufferSize() const noexcept;
+
     qint64 bytesAvailable() const override;
     qint64 writeData(const char* data, qint64 len) override;
     qint64 readData(char* data, qint64 maxlen) override;

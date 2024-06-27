@@ -149,11 +149,16 @@ qint64 NoiseGenerator::writeData(const char *data, qint64 len)
     return 0;
 }
 
-qint64 NoiseGenerator::bytesAvailable() const
+int NoiseGenerator::optimalBufferSize() const noexcept
 {
     const int channelBytes = m_format.sampleSize() / 8;
     const auto capHint = (m_format.sampleRate() * m_format.channelCount() * channelBytes) * BUFFER_DUR_US / 1000000;
     Q_ASSERT(capHint % (m_format.channelCount() * channelBytes) == 0);
 
     return capHint;
+}
+
+qint64 NoiseGenerator::bytesAvailable() const
+{
+    return optimalBufferSize();
 }
