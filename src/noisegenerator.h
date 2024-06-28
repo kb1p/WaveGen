@@ -50,7 +50,7 @@ public:
 
 private:
     // Hint about optimal buffer size for the audio playback device, in microseconds
-    static constexpr int BUFFER_DUR_US = 1000000;
+    static constexpr int BUFFER_DUR_MS = 1000;
 
     const QAudioFormat m_format;
     const double k_sampleInterval;
